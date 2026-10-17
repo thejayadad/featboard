@@ -15,4 +15,5 @@ export type FeatureRequest = {
   votes: number;
   comments: number;
   status: RequestStatus;
+  createdAt: string;
 };

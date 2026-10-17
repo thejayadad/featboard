@@ -12,6 +12,8 @@ export const mockRequests: FeatureRequest[] = [
     votes: 42,
     comments: 8,
     status: "IN_PROGRESS",
+    createdAt: "2026-10-15T12:00:00Z",
+
   },
   {
     id: "2",
@@ -24,6 +26,8 @@ export const mockRequests: FeatureRequest[] = [
     votes: 28,
     comments: 3,
     status: "PLANNED",
+    createdAt: "2026-10-16T12:00:00Z",
+
   },
   {
     id: "3",
@@ -36,6 +40,8 @@ export const mockRequests: FeatureRequest[] = [
     votes: 16,
     comments: 5,
     status: "UNDER_REVIEW",
+    createdAt: "2026-10-17T12:00:00Z",
+
   },
   {
     id: "4",
@@ -48,5 +54,6 @@ export const mockRequests: FeatureRequest[] = [
     votes: 11,
     comments: 2,
     status: "COMPLETE",
+    createdAt: "2026-10-14T12:00:00Z",
   },
 ];
