@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RequestCard } from "@/features/requests/components/request-card";
+import { RequestList } from "@/features/requests/components/request-list";
 import { mockRequests } from "@/features/requests/mock-data";
 
 export default function HomePage() {
@@ -33,14 +33,7 @@ export default function HomePage() {
         </Link>
       </div>
 
-      <section
-        aria-label="Feature requests"
-        className="mt-5 space-y-2"
-      >
-        {mockRequests.map((request) => (
-          <RequestCard key={request.id} request={request} />
-        ))}
-      </section>
+      <RequestList requests={mockRequests} />
     </main>
   );
 }

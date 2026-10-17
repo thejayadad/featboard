@@ -1,16 +1,15 @@
-import type { DragEvent, ReactNode } from "react";
+"use client";
+
+import { useDroppable } from "@dnd-kit/core";
+import type { ReactNode } from "react";
 import type { RequestStatus } from "../types";
 import { requestStatuses } from "../statuses";
 
 type AdminBoardColumnProps = {
   status: RequestStatus;
   count: number;
-  isOver: boolean;
   isSearching: boolean;
   children: ReactNode;
-  onDragOver: (event: DragEvent<HTMLElement>) => void;
-  onDragLeave: (event: DragEvent<HTMLElement>) => void;
-  onDrop: (event: DragEvent<HTMLElement>) => void;
 };
 
 const descriptions: Record<RequestStatus, string> = {
@@ -23,22 +22,20 @@ const descriptions: Record<RequestStatus, string> = {
 export function AdminBoardColumn({
   status,
   count,
-  isOver,
   isSearching,
   children,
-  onDragOver,
-  onDragLeave,
-  onDrop,
 }: AdminBoardColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: status,
+  });
+
   const configuration = requestStatuses[status];
 
   return (
     <section
+      ref={setNodeRef}
       aria-label={`${configuration.label} requests`}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      className={`min-w-0 rounded-xl border p-2 transition-colors ${
+      className={`min-w-0 rounded-xl border p-2 ${
         isOver
           ? "border-orange-500 bg-orange-500/10"
           : "border-transparent bg-base-200/70"
@@ -54,12 +51,12 @@ export function AdminBoardColumn({
             {configuration.label}
           </h2>
 
-          <span className="flex size-5 items-center justify-center rounded bg-base-100 text-[10px] text-base-content/55">
+          <span className="flex size-5 items-center justify-center rounded bg-base-100 text-[11px] text-base-content/60">
             {count}
           </span>
         </div>
 
-        <p className="mt-1 text-[10px] text-base-content/45">
+        <p className="mt-1 text-[11px] text-base-content/50">
           {descriptions[status]}
         </p>
       </div>
@@ -72,7 +69,7 @@ export function AdminBoardColumn({
             className={`flex min-h-40 items-center justify-center rounded-lg border border-dashed px-2 text-center text-xs ${
               isOver
                 ? "border-orange-500 text-orange-600"
-                : "border-base-content/15 text-base-content/45"
+                : "border-base-content/15 text-base-content/50"
             }`}
           >
             {isOver

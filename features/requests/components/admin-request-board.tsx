@@ -1,6 +1,16 @@
 "use client";
 
-import { useState, type DragEvent } from "react";
+import { useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  rectIntersection,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+
 import type { FeatureRequest, RequestStatus } from "../types";
 import { requestStatuses } from "../statuses";
 import { AdminBoardColumn } from "./admin-board-column";
@@ -12,58 +22,52 @@ type AdminRequestBoardProps = {
 
 const statuses = Object.keys(requestStatuses) as RequestStatus[];
 
+function isRequestStatus(value: string): value is RequestStatus {
+  return Object.prototype.hasOwnProperty.call(requestStatuses, value);
+}
+
 export function AdminRequestBoard({
   initialRequests,
 }: AdminRequestBoardProps) {
   const [requests, setRequests] = useState(initialRequests);
   const [search, setSearch] = useState("");
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [overStatus, setOverStatus] = useState<RequestStatus | null>(null);
   const [notice, setNotice] = useState("");
 
-  function moveRequest(id: string, status: RequestStatus) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      scrollBehavior: "auto",
+    }),
+  );
+
+  function finishDrag({ active, over }: DragEndEvent) {
+    if (!over) {
+      setNotice("Move cancelled. The request stayed in its original column.");
+      return;
+    }
+
+    const id = String(active.id);
+    const destination = String(over.id);
+
+    if (!isRequestStatus(destination)) return;
+
     const request = requests.find((item) => item.id === id);
 
-    if (!request || request.status === status) return;
+    if (!request || request.status === destination) return;
 
     setRequests((current) =>
       current.map((item) =>
-        item.id === id ? { ...item, status } : item,
+        item.id === id ? { ...item, status: destination } : item,
       ),
     );
 
     setNotice(
-      `${request.title} moved to ${requestStatuses[status].label.toLowerCase()}.`,
+      `${request.title} moved to ${requestStatuses[destination].label.toLowerCase()}.`,
     );
-  }
-
-  function startDrag(
-    event: DragEvent<HTMLDivElement>,
-    requestId: string,
-  ) {
-    event.dataTransfer.setData("text/plain", requestId);
-    event.dataTransfer.effectAllowed = "move";
-
-    setDraggedId(requestId);
-    setNotice("");
-  }
-
-  function endDrag() {
-    setDraggedId(null);
-    setOverStatus(null);
-  }
-
-  function dropRequest(
-    event: DragEvent<HTMLElement>,
-    status: RequestStatus,
-  ) {
-    event.preventDefault();
-
-    if (draggedId) {
-      moveRequest(draggedId, status);
-    }
-
-    endDrag();
   }
 
   const query = search.trim().toLowerCase();
@@ -77,7 +81,7 @@ export function AdminRequestBoard({
   return (
     <div className="mt-4">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <p className="text-xs text-base-content/55">
+        <p className="text-xs text-base-content/60">
           {visibleRequests.length} of {requests.length} requests
         </p>
 
@@ -96,76 +100,70 @@ export function AdminRequestBoard({
           Request board
         </span>
 
-        <span className="pb-2 text-[10px] text-base-content/45">
-          Drag cards using the grip to change status
+        <span className="pb-2 text-[11px] text-base-content/55">
+          Move using the card grip
         </span>
       </div>
+
+      <p className="mt-2 text-[11px] leading-relaxed text-base-content/55">
+        Drag with a mouse or touch. Keyboard: focus a grip, press Space,
+        use the arrow keys to move, then Space to drop. Escape cancels.
+      </p>
 
       <p
         role="status"
         aria-live="polite"
         aria-atomic="true"
-        className="mt-2 min-h-4 text-[11px] text-base-content/55"
+        className="mt-2 min-h-4 text-xs text-base-content/60"
       >
         {notice}
       </p>
 
-      <div className="mt-2 grid items-stretch gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {statuses.map((status) => {
-          const items = visibleRequests
-            .filter((request) => request.status === status)
-            .sort(
-              (a, b) =>
-                b.votes - a.votes || a.id.localeCompare(b.id),
+      <DndContext
+        id="admin-request-board"
+        sensors={sensors}
+        collisionDetection={rectIntersection}
+        onDragStart={() => setNotice("")}
+        onDragEnd={finishDrag}
+        onDragCancel={() => setNotice("Move cancelled.")}
+        accessibility={{
+          screenReaderInstructions: {
+            draggable:
+              "To pick up a request, press Space. Use the arrow keys to move it into another status column. Press Space to drop, or Escape to cancel.",
+          },
+        }}
+      >
+        <div className="mt-2 grid items-stretch gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {statuses.map((status) => {
+            const items = visibleRequests
+              .filter((request) => request.status === status)
+              .sort(
+                (a, b) =>
+                  b.votes - a.votes || a.id.localeCompare(b.id),
+              );
+
+            return (
+              <AdminBoardColumn
+                key={status}
+                status={status}
+                count={items.length}
+                isSearching={query.length > 0}
+              >
+                {items.map((request) => (
+                  <AdminRequestCard
+                    key={request.id}
+                    request={request}
+                  />
+                ))}
+              </AdminBoardColumn>
             );
+          })}
+        </div>
+      </DndContext>
 
-          return (
-            <AdminBoardColumn
-              key={status}
-              status={status}
-              count={items.length}
-              isOver={overStatus === status}
-              isSearching={query.length > 0}
-              onDragOver={(event) => {
-                if (!draggedId) return;
-
-                event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
-                setOverStatus(status);
-              }}
-              onDragLeave={(event) => {
-                const nextTarget = event.relatedTarget;
-
-                if (
-                  nextTarget instanceof Node &&
-                  event.currentTarget.contains(nextTarget)
-                ) {
-                  return;
-                }
-
-                setOverStatus((current) =>
-                  current === status ? null : current,
-                );
-              }}
-              onDrop={(event) => dropRequest(event, status)}
-            >
-              {items.map((request) => (
-                <AdminRequestCard
-                  key={request.id}
-                  request={request}
-                  isDragging={draggedId === request.id}
-                  onDragStart={startDrag}
-                  onDragEnd={endDrag}
-                />
-              ))}
-            </AdminBoardColumn>
-          );
-        })}
-      </div>
-
-      <p className="mt-3 text-[10px] text-base-content/45">
-        Desktop drag preview · Changes reset on refresh · Admin access
-        is not protected yet
+      <p className="mt-3 text-[11px] text-base-content/50">
+        UI preview · Changes reset on refresh · Admin access is not
+        protected yet
       </p>
     </div>
   );
