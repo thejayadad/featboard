@@ -10,3 +10,16 @@ html,
   overflow-x: hidden;
   @apply text-sm;
 }
+
+@plugin "daisyui" {
+  themes: light --default;
+}
+
+
+
+
+
+
+
+
+
